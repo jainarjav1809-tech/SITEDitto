@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>SITEDitto</title>
+
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+
+      <div class="logo">
+        🛡️
+      </div>
+
+      <div>
+        <h1>SITEDitto</h1>
+        <p>Virtual Website Security</p>
+      </div>
+
+    </div>
+
+
+    <!-- Current Website -->
+    <div class="website-card">
+
+      <div class="label">
+        CURRENT WEBSITE
+      </div>
+
+      <div
+        id="websiteUrl"
+        class="website-url"
+      >
+        Detecting...
+      </div>
+
+    </div>
+
+
+    <!-- Loading -->
+    <div
+      id="loading"
+      class="loading"
+    >
+
+      <div class="spinner"></div>
+
+      <p>Analyzing website...</p>
+
+    </div>
+
+
+    <!-- Result -->
+    <div
+      id="result"
+      class="result hidden"
+    >
+
+      <!-- Score -->
+      <div class="score-section">
+
+        <div
+          id="score"
+          class="score"
+        >
+          94
+        </div>
+
+        <div class="score-label">
+          TRUST SCORE
+        </div>
+
+      </div>
+
+
+      <!-- Verdict -->
+      <div
+        id="verdict"
+        class="verdict safe"
+      >
+        ✓ SAFE TO USE
+      </div>
+
+
+      <!-- Security checks -->
+      <div class="checks">
+
+        <div class="check">
+          <span class="check-icon">✓</span>
+          <span>HTTPS connection</span>
+        </div>
+
+        <div class="check">
+          <span class="check-icon">✓</span>
+          <span>No suspicious redirect</span>
+        </div>
+
+        <div class="check">
+          <span class="check-icon">✓</span>
+          <span>Low network risk</span>
+        </div>
+
+        <div
+          id="warningCheck"
+          class="check warning"
+        >
+          <span class="check-icon">!</span>
+          <span>Analytics detected</span>
+        </div>
+
+      </div>
+
+
+      <!-- LiveGuard -->
+      <div class="liveguard">
+
+        <div>
+
+          <strong>
+            LIVEGUARD
+          </strong>
+
+          <span>
+            Continuous protection
+          </span>
+
+        </div>
+
+        <div class="live-status">
+          ● ON
+        </div>
+
+      </div>
+
+
+      <!-- Full Analysis -->
+      <button
+        id="fullAnalysis"
+        class="analysis-button"
+      >
+        View Full Analysis
+      </button>
+
+    </div>
+
+
+    <!-- Footer -->
+    <div class="footer">
+
+      <span>Don't trust the website.</span>
+
+      <strong>
+        Test it first.
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <script src="popup.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,432 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+
+  width: 360px;
+
+  background: #0b1020;
+
+  color: #ffffff;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+
+.container {
+  padding: 20px;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 20px;
+}
+
+
+.logo {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #18213b;
+
+  font-size: 22px;
+}
+
+
+.header h1 {
+  margin: 0;
+
+  font-size: 20px;
+
+  letter-spacing: -0.5px;
+}
+
+
+.header p {
+  margin: 3px 0 0;
+
+  color: #8993aa;
+
+  font-size: 11px;
+}
+
+
+/* =========================
+   WEBSITE
+========================= */
+
+.website-card {
+  padding: 13px;
+
+  border: 1px solid #202b47;
+
+  border-radius: 12px;
+
+  background: #11182b;
+
+  margin-bottom: 18px;
+}
+
+
+.label {
+  color: #6f7b95;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 1px;
+
+  margin-bottom: 6px;
+}
+
+
+.website-url {
+  color: #dce3f2;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+/* =========================
+   LOADING
+========================= */
+
+.loading {
+  text-align: center;
+
+  padding: 30px 0;
+}
+
+
+.spinner {
+  width: 30px;
+  height: 30px;
+
+  margin: auto;
+
+  border: 3px solid #26324e;
+
+  border-top: 3px solid #7c8cff;
+
+  border-radius: 50%;
+
+  animation: spin 1s linear infinite;
+}
+
+
+.loading p {
+  margin-top: 12px;
+
+  color: #8d98b0;
+
+  font-size: 12px;
+}
+
+
+@keyframes spin {
+
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+
+}
+
+
+/* =========================
+   RESULT
+========================= */
+
+.hidden {
+  display: none !important;
+}
+
+
+.result {
+  display: block;
+}
+
+
+/* =========================
+   SCORE
+========================= */
+
+.score-section {
+  text-align: center;
+
+  padding: 8px 0 14px;
+}
+
+
+.score {
+  font-size: 58px;
+
+  font-weight: 800;
+
+  line-height: 1;
+
+  letter-spacing: -3px;
+}
+
+
+.score-label {
+  margin-top: 7px;
+
+  color: #7d88a1;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+
+/* =========================
+   VERDICT
+========================= */
+
+.verdict {
+  text-align: center;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  margin-bottom: 15px;
+}
+
+
+.verdict.safe {
+  background: #103326;
+
+  color: #4de3a4;
+
+  border: 1px solid #1b6849;
+}
+
+
+.verdict.caution {
+  background: #342a0e;
+
+  color: #f2c94c;
+
+  border: 1px solid #675416;
+}
+
+
+.verdict.danger {
+  background: #35161b;
+
+  color: #ff6b7c;
+
+  border: 1px solid #70232e;
+}
+
+
+/* =========================
+   CHECKS
+========================= */
+
+.checks {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+
+  margin-bottom: 16px;
+}
+
+
+.check {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  padding: 9px 10px;
+
+  border-radius: 8px;
+
+  background: #11182b;
+
+  border: 1px solid #1e2943;
+
+  color: #c6cedd;
+
+  font-size: 11px;
+}
+
+
+.check-icon {
+  width: 17px;
+  height: 17px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #173c30;
+
+  color: #4de3a4;
+
+  font-size: 10px;
+
+  font-weight: bold;
+}
+
+
+.check.warning .check-icon {
+  background: #45370f;
+
+  color: #f2c94c;
+}
+
+
+/* =========================
+   LIVEGUARD
+========================= */
+
+.liveguard {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  background: #0e1d24;
+
+  border: 1px solid #193a43;
+
+  margin-bottom: 13px;
+}
+
+
+.liveguard strong {
+  display: block;
+
+  font-size: 11px;
+
+  letter-spacing: 0.5px;
+}
+
+
+.liveguard span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #718095;
+
+  font-size: 9px;
+}
+
+
+.live-status {
+  color: #39d99a;
+
+  font-size: 10px;
+
+  font-weight: 800;
+}
+
+
+/* =========================
+   BUTTON
+========================= */
+
+.analysis-button {
+  width: 100%;
+
+  border: 0;
+
+  border-radius: 9px;
+
+  padding: 12px;
+
+  background: #6675f5;
+
+  color: white;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+
+.analysis-button:hover {
+  background: #7785ff;
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+.footer {
+  text-align: center;
+
+  margin-top: 17px;
+
+  color: #59657d;
+
+  font-size: 9px;
+}
+
+
+.footer strong {
+  color: #8d98b0;
+}

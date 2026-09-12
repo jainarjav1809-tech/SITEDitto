@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "SITEDitto - Virtual Website Security",
+  "version": "1.0.0",
+  "description": "Analyze the current website for security, phishing, privacy and network risks.",
+  "permissions": [
+    "tabs",
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SITEDitto Security"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
