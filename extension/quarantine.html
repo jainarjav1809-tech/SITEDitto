@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>SITEDitto — Website Quarantined</title>
+
+  <link
+    rel="stylesheet"
+    href="quarantine.css"
+  >
+
+</head>
+
+<body>
+
+  <div class="wrap">
+
+    <div class="panel">
+
+      <div class="badge">
+        🛡 SITEDitto
+      </div>
+
+      <h1>
+        WEBSITE QUARANTINED
+      </h1>
+
+      <div class="scoreRow">
+
+        <div class="score" id="score">
+          --/100
+        </div>
+
+        <div class="hostname" id="hostname">
+          this website
+        </div>
+
+      </div>
+
+      <div class="blockedTag">
+        CONNECTION BLOCKED
+      </div>
+
+      <p class="lead">
+        SITEDitto detected multiple high-risk browser signals and
+        stopped this page from loading.
+      </p>
+
+      <div class="evidenceBox">
+
+        <div class="evidenceTitle">
+          EVIDENCE
+        </div>
+
+        <ul id="evidenceList">
+          <li>Loading evidence…</li>
+        </ul>
+
+      </div>
+
+      <div class="actions">
+
+        <button id="goBack" class="btn primary">
+          Go Back
+        </button>
+
+        <button id="viewEvidence" class="btn">
+          View Full Activity Log
+        </button>
+
+        <button id="restoreAccess" class="btn danger">
+          Restore Access
+        </button>
+
+      </div>
+
+      <div id="fullLog" class="fullLog hidden"></div>
+
+      <p class="disclaimer">
+        SITEDitto monitors browser-visible security behavior and blocks
+        navigation when the observed risk crosses a critical threshold.
+        This is not a guarantee that every threat has been detected on
+        this site, or that other sites are safe.
+      </p>
+
+    </div>
+
+  </div>
+
+  <script src="quarantine.js"></script>
+
+</body>
+
+</html>

@@ -2,12 +2,12 @@
 // SITEDitto - Live Website Monitor
 // ============================================================
 
-console.log(
-  "SITEDitto content monitor active."
-);
+console.log("SITEDitto content monitor active.");
 
 let credentialDetected = false;
 let externalFormDetected = false;
+let phishingPageDetected = false;
+
 
 // ============================================================
 // AUTOMATIC SECURITY WARNING
@@ -15,11 +15,8 @@ let externalFormDetected = false;
 
 function showSecurityWarning(score) {
 
-  // Don't create duplicate warning
   const existing =
-    document.getElementById(
-      "siteditto-warning"
-    );
+    document.getElementById("siteditto-warning");
 
   if (existing) {
     return;
@@ -28,8 +25,7 @@ function showSecurityWarning(score) {
   const warning =
     document.createElement("div");
 
-  warning.id =
-    "siteditto-warning";
+  warning.id = "siteditto-warning";
 
   warning.innerHTML = `
     <div style="
@@ -113,6 +109,7 @@ function showSecurityWarning(score) {
   );
 }
 
+
 // ============================================================
 // RECEIVE WARNING FROM BACKGROUND
 // ============================================================
@@ -132,9 +129,12 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+
 // ============================================================
 // CREDENTIAL FORM DETECTION
-// This is a SIGNAL, NOT automatically a threat.
+//
+// A password field by itself is NOT considered malicious.
+// It becomes important when combined with phishing language.
 // ============================================================
 
 function detectCredentialForms() {
@@ -160,6 +160,117 @@ function detectCredentialForms() {
     );
   }
 }
+
+
+// ============================================================
+// PHISHING / SOCIAL ENGINEERING DETECTION
+//
+// Looks for combinations such as:
+//
+// "Verify Your Account"
+// "re-verification"
+// "confirm your password"
+// "account verification"
+// "security verification"
+// "account suspended"
+// "confirm your identity"
+//
+// IMPORTANT:
+// We require credential-related elements AND suspicious
+// account-verification language before sending the strong
+// phishing signal.
+// ============================================================
+
+function detectPhishingPage() {
+
+  if (phishingPageDetected) {
+    return;
+  }
+
+  const passwordInputs =
+    document.querySelectorAll(
+      'input[type="password"]'
+    );
+
+  if (passwordInputs.length === 0) {
+    return;
+  }
+
+  const bodyText =
+    (
+      document.body?.innerText ||
+      ""
+    ).toLowerCase();
+
+  const phishingPhrases = [
+
+    "verify your account",
+    "verify account",
+
+    "account verification",
+    "account verification required",
+
+    "re-verification",
+    "reverification",
+
+    "confirm your password",
+    "confirm password",
+
+    "verify your password",
+    "verify password",
+
+    "confirm your identity",
+    "verify your identity",
+
+    "account requires verification",
+    "account requires re-verification",
+
+    "security verification",
+    "security check",
+
+    "account suspended",
+    "account will be suspended",
+
+    "account has been suspended",
+
+    "unusual activity",
+    "suspicious activity",
+
+    "confirm your account",
+    "validate your account",
+
+    "update your account",
+
+    "login to verify",
+    "sign in to verify"
+  ];
+
+  const matchedPhrases =
+    phishingPhrases.filter(
+      (phrase) =>
+        bodyText.includes(phrase)
+    );
+
+  if (matchedPhrases.length === 0) {
+    return;
+  }
+
+  phishingPageDetected = true;
+
+  console.log(
+    "[SITEDitto] Suspicious credential/phishing page detected:",
+    matchedPhrases
+  );
+
+  chrome.runtime.sendMessage({
+
+    type: "PHISHING_INDICATOR",
+
+    phrases: matchedPhrases
+
+  });
+}
+
 
 // ============================================================
 // EXTERNAL FORM DETECTION
@@ -213,10 +324,87 @@ function detectExternalForms() {
       }
 
     } catch {
+
       // Ignore invalid URLs
+
     }
   }
 }
+
+
+// ============================================================
+// SUSPICIOUS DOWNLOAD-LIKE LINK DETECTION
+//
+// This is NOT a real download event.
+// It is only an additional signal when the page contains
+// credential/phishing language and a suspicious download link.
+// ============================================================
+
+function detectSuspiciousDownloadLink() {
+
+  const links =
+    document.querySelectorAll(
+      "a"
+    );
+
+  const suspiciousDownloadWords = [
+
+    "download your invoice",
+    "download invoice",
+    "download statement",
+    "download document",
+    "download receipt",
+    "download file"
+  ];
+
+  for (const link of links) {
+
+    const text =
+      (
+        link.innerText ||
+        link.textContent ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (!text) {
+      continue;
+    }
+
+    const matched =
+      suspiciousDownloadWords.some(
+        (phrase) =>
+          text.includes(phrase)
+      );
+
+    if (matched) {
+
+      const passwordInputs =
+        document.querySelectorAll(
+          'input[type="password"]'
+        );
+
+      if (
+        passwordInputs.length > 0
+      ) {
+
+        chrome.runtime.sendMessage({
+
+          type: "SUSPICIOUS_DOWNLOAD_LINK"
+
+        });
+
+        console.log(
+          "[SITEDitto] Suspicious download link detected"
+        );
+
+        return;
+      }
+    }
+  }
+}
+
 
 // ============================================================
 // PAGE LOAD
@@ -225,6 +413,7 @@ function detectExternalForms() {
 chrome.runtime.sendMessage({
   type: "PAGE_LOADED"
 });
+
 
 // ============================================================
 // INITIAL ANALYSIS
@@ -235,9 +424,14 @@ function analyzePage() {
   detectCredentialForms();
 
   detectExternalForms();
+
+  detectPhishingPage();
+
+  detectSuspiciousDownloadLink();
 }
 
 analyzePage();
+
 
 // ============================================================
 // LIVE DOM MONITORING
@@ -259,6 +453,10 @@ const observer =
         detectCredentialForms();
 
         detectExternalForms();
+
+        detectPhishingPage();
+
+        detectSuspiciousDownloadLink();
 
       }, 300);
   });

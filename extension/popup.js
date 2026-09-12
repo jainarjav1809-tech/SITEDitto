@@ -456,6 +456,16 @@ chrome.runtime.onMessage.addListener(
       message.state
     ) {
 
+      // Only update if the message belongs to
+      // the popup's current Chrome tab.
+      if (
+        message.state.tabId !== undefined &&
+        String(message.state.tabId) !==
+          String(currentTabId)
+      ) {
+        return;
+      }
+
       updateUI(
         message.state
       );
@@ -475,11 +485,32 @@ if (dashboardButton) {
     () => {
 
       console.log(
-        "[SITEDitto] Opening dashboard..."
+        "[SITEDitto] Opening dashboard for tab:",
+        currentTabId
       );
 
+
+      if (
+        typeof currentTabId !== "number"
+      ) {
+
+        console.error(
+          "[SITEDitto] Cannot open dashboard: invalid tab ID."
+        );
+
+        return;
+      }
+
+
       chrome.tabs.create({
-        url: "http://localhost:5173"
+
+        // IMPORTANT:
+        // tabId is ONLY used internally by the dashboard
+        // to identify which Chrome tab's state to display.
+        url:
+          `http://localhost:5173/?tabId=${encodeURIComponent(
+            currentTabId
+          )}`
       });
 
     }

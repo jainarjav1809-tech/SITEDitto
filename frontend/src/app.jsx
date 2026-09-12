@@ -256,6 +256,11 @@ const qrScenarios = {
 
 export default function App() {
 
+  // The dashboard URL contains ?tabId=<Chrome tab id>.
+  // This identifies which website the dashboard must display.
+  const dashboardTabId =
+    new URLSearchParams(window.location.search).get("tabId");
+
   const [page, setPage] =
     useState("Dashboard");
 
@@ -368,54 +373,161 @@ export default function App() {
   const data = liveData || result || scenarios[scenario];
 
   useEffect(() => {
-    if (!liveGuard) { setLiveConnection("paused"); return; }
+    if (!liveGuard) {
+      setLiveConnection("paused");
+      return;
+    }
+
     let socket;
-    let reconnectTimer;
     let disposed = false;
 
+    const isCorrectTabState = (state) => {
+      if (!state || typeof state !== "object") return false;
+
+      if (dashboardTabId !== null) {
+        if (state.tabId === undefined || state.tabId === null) {
+          return false;
+        }
+
+        if (String(state.tabId) !== String(dashboardTabId)) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
     const applyLiveState = (state) => {
-      if (!state || typeof state !== "object") return;
+      if (!isCorrectTabState(state)) return;
+
       setLiveState(state);
-      if (state.url) setUrl(state.url);
+
+      // IMPORTANT: monitored website URL, not dashboard URL.
+      if (state.url) {
+        setUrl(state.url);
+      }
+
       setLiveConnection("connected");
     };
 
     const handleWindowMessage = (event) => {
       if (event.source !== window) return;
+
       const message = event.data;
       if (!message || typeof message !== "object") return;
-      if (message.type === "SITEDITTO_STATE" || message.type === "SITEDITTO_LIVE_STATE") {
-        applyLiveState(message.state || message.payload || message);
+
+      if (
+        message.type === "SITEDITTO_STATE" ||
+        message.type === "SITEDITTO_LIVE_STATE"
+      ) {
+        applyLiveState(
+          message.state ||
+          message.payload ||
+          message
+        );
       }
     };
+
     window.addEventListener("message", handleWindowMessage);
 
-    const wsUrl = import.meta.env.VITE_SITEDITTO_WS_URL || "ws://localhost:8000/ws";
+    if (dashboardTabId !== null) {
+      fetch(
+        `http://localhost:8000/api/state?tabId=${encodeURIComponent(
+          dashboardTabId
+        )}`
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((state) => {
+          if (!disposed) {
+            applyLiveState(state);
+          }
+        })
+        .catch((error) => {
+          if (!disposed) {
+            console.error(
+              "[SITEDitto] Failed to load tab state:",
+              error
+            );
+          }
+        });
+    }
+
+    const wsUrl =
+      import.meta.env.VITE_SITEDITTO_WS_URL ||
+      "ws://localhost:8000/ws";
+
     try {
       socket = new WebSocket(wsUrl);
       setLiveConnection("connecting");
+
       socket.onopen = () => {
         if (disposed) return;
+
         setLiveConnection("connected");
-        try { socket.send(JSON.stringify({ type: "SUBSCRIBE", client: "siteditto-dashboard" })); } catch {}
+
+        try {
+          socket.send(
+            JSON.stringify({
+              type: "SUBSCRIBE",
+              client: "siteditto-dashboard",
+              tabId: dashboardTabId
+            })
+          );
+        } catch {}
       };
+
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          applyLiveState(message.state || message.payload || message.data || message);
-        } catch {}
+          const state =
+            message.state ||
+            message.payload ||
+            message.data ||
+            message;
+
+          applyLiveState(state);
+        } catch (error) {
+          console.error(
+            "[SITEDitto] Invalid WebSocket message:",
+            error
+          );
+        }
       };
-      socket.onerror = () => { if (!disposed) setLiveConnection("offline"); };
-      socket.onclose = () => { if (!disposed) setLiveConnection("offline"); };
-    } catch { setLiveConnection("offline"); }
+
+      socket.onerror = () => {
+        if (!disposed) {
+          setLiveConnection("offline");
+        }
+      };
+
+      socket.onclose = () => {
+        if (!disposed) {
+          setLiveConnection("offline");
+        }
+      };
+    } catch (error) {
+      setLiveConnection("offline");
+    }
 
     return () => {
       disposed = true;
-      window.removeEventListener("message", handleWindowMessage);
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) { try { socket.close(); } catch {} }
+      window.removeEventListener(
+        "message",
+        handleWindowMessage
+      );
+
+      if (socket) {
+        try {
+          socket.close();
+        } catch {}
+      }
     };
-  }, [liveGuard]);
+  }, [liveGuard, dashboardTabId]);
 
 
   /* ======================================================
@@ -636,11 +748,30 @@ export default function App() {
 
         <div className="topActions">
 
-          <div className="system">
+          <div
+            className="system"
+            style={{
+              color:
+                liveConnection === "connected"
+                  ? "#4ade80"
+                  : liveConnection === "connecting" ||
+                    liveConnection === "waiting"
+                  ? "#f4c95d"
+                  : "#ff6269",
+            }}
+          >
 
             <span></span>
 
-            System Online
+            {liveConnection === "connected"
+              ? "Live Data Connected"
+              : liveConnection === "connecting"
+              ? "Connecting..."
+              : liveConnection === "waiting"
+              ? "Waiting for Extension"
+              : liveConnection === "paused"
+              ? "LiveGuard Paused"
+              : "Backend Offline (Demo Data)"}
 
           </div>
 
@@ -825,6 +956,7 @@ export default function App() {
               progress={progress}
               startScan={startScan}
               data={data}
+              isLive={!!liveData}
               liveGuard={liveGuard}
               selectedAction={
                 selectedAction
@@ -998,6 +1130,7 @@ function Dashboard({
   progress,
   startScan,
   data,
+  isLive,
   liveGuard,
   selectedAction,
   setSelectedAction,
@@ -1005,6 +1138,26 @@ function Dashboard({
   setAiAnswer,
   setPage,
 }) {
+
+  function getCopilotAnswer(question, data) {
+    const findings = data.findings || [];
+    const signals = data.signals || {};
+
+    if (question.includes("password")) {
+      return signals.credentialForm
+        ? "This site has a password or credential form. Verify the exact domain and that the connection is HTTPS before entering your password."
+        : "No credential form has been observed on this site in the current session. If one appears, SITEDitto will flag it here immediately.";
+    }
+
+    if (question.includes("tracking")) {
+      return signals.externalForm
+        ? "SITEDitto observed a form on this page submitting data to a different domain than the one you're visiting. Check Network Intelligence for the destination."
+        : "No data has been observed leaving this site to a third-party destination in the current session.";
+    }
+
+    // "risky" and "score change" both answered from the real evidence
+    return `Trust score is ${data.score}/100 (${data.verdict}). ${findings.join(" ")}`;
+  }
 
   const advice = {
 
@@ -1067,36 +1220,28 @@ function Dashboard({
         </div>
 
 
-        <div className="demoSelector">
+        {isLive ? (
 
-          <span>
-            DEMO SCENARIO
-          </span>
+          <div className="demoSelector">
 
-          <select
-            value={scenario}
-            onChange={(event) =>
-              setScenario(
-                event.target.value
-              )
-            }
-          >
+            <span style={{ color: "#4ade80" }}>
+              ● LIVE — showing your browser's current site
+            </span>
 
-            <option value="safe">
-              Safe Website
-            </option>
+          </div>
 
-            <option value="caution">
-              Suspicious Website
-            </option>
+        ) : (
 
-            <option value="danger">
-              Dangerous Website
-            </option>
+          <div className="demoSelector">
 
-          </select>
+            <span>
+              Waiting for live browser data — open a site in a
+              monitored tab to see it here.
+            </span>
 
-        </div>
+          </div>
+
+        )}
 
       </section>
 
@@ -1660,17 +1805,7 @@ function Dashboard({
 
                   <p>
 
-                    {aiAnswer.includes(
-                      "password"
-                    )
-                      ? "The website contains a credential field. Verify the exact domain and HTTPS before submitting your password."
-
-                      : aiAnswer.includes(
-                          "tracking"
-                        )
-                      ? "Third-party analytics or tracking signals were observed. Check Network Intelligence and Privacy."
-
-                      : `The current trust score is ${data.score}/100. SITEDitto calculated this from security, privacy, phishing and network signals.`}
+                    {getCopilotAnswer(aiAnswer, data)}
 
                   </p>
 
