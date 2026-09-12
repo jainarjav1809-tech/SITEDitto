@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import jsQR from "jsqr";
+import React, { useEffect, useMemo, useState } from "react";
 
 /*
 =========================================================
@@ -278,6 +277,9 @@ export default function App() {
   const [result, setResult] =
     useState(null);
 
+  const [liveState, setLiveState] = useState(null);
+  const [liveConnection, setLiveConnection] = useState("waiting");
+
   const [liveGuard, setLiveGuard] =
     useState(true);
 
@@ -332,15 +334,88 @@ export default function App() {
   const [qrResult, setQrResult] =
     useState(null);
 
-  const [qrError, setQrError] =
-    useState("");
 
-  const [decodedQrUrl, setDecodedQrUrl] =
-    useState("");
+  function normalizeLiveState(state) {
+    if (!state) return null;
+    const signals = state.signals || {};
+    const score = Math.max(0, Math.min(100, Number(state.score ?? 100)));
+    const events = (state.events || []).map((event) => {
+      if (Array.isArray(event)) return event;
+      const icon = event.severity === "danger" ? "×" : event.severity === "warning" ? "!" : "✓";
+      return [icon, event.type || "LIVE", event.message || "Security event observed", event.severity || "safe"];
+    });
+    const findings = [];
+    if (signals.https === false) findings.push("The current website session is not using HTTPS.");
+    if (signals.credentialForm) findings.push("A password or credential form is present. Verify the exact domain before submitting credentials.");
+    if (signals.externalForm) findings.push("A form was observed submitting data to another domain.");
+    if (signals.download) findings.push("A file download was started by the website.");
+    if (Number(signals.redirects || 0) > 0) findings.push(`${signals.redirects} redirect(s) were observed during navigation.`);
+    if (!findings.length) findings.push("No high-risk browser-visible signals have been observed in the current session.");
+    return {
+      ...scenarios.safe, ...state, score,
+      security: signals.https === false ? 60 : 98,
+      privacy: signals.externalForm ? 55 : 95,
+      phishing: Number(signals.redirects || 0) > 1 ? 60 : 96,
+      network: signals.externalForm ? 65 : 95,
+      credential: signals.credentialForm ? 75 : 98,
+      download: signals.download ? 55 : 98,
+      verdict: state.verdict || (score >= 80 ? "SAFE TO USE" : score >= 50 ? "USE WITH CAUTION" : "DO NOT USE"),
+      events, findings, destinations: state.destinations || [], url: state.url || ""
+    };
+  }
 
+  const liveData = useMemo(() => normalizeLiveState(liveState), [liveState]);
+  const data = liveData || result || scenarios[scenario];
 
-  const data =
-    result || scenarios[scenario];
+  useEffect(() => {
+    if (!liveGuard) { setLiveConnection("paused"); return; }
+    let socket;
+    let reconnectTimer;
+    let disposed = false;
+
+    const applyLiveState = (state) => {
+      if (!state || typeof state !== "object") return;
+      setLiveState(state);
+      if (state.url) setUrl(state.url);
+      setLiveConnection("connected");
+    };
+
+    const handleWindowMessage = (event) => {
+      if (event.source !== window) return;
+      const message = event.data;
+      if (!message || typeof message !== "object") return;
+      if (message.type === "SITEDITTO_STATE" || message.type === "SITEDITTO_LIVE_STATE") {
+        applyLiveState(message.state || message.payload || message);
+      }
+    };
+    window.addEventListener("message", handleWindowMessage);
+
+    const wsUrl = import.meta.env.VITE_SITEDITTO_WS_URL || "ws://localhost:8000/ws";
+    try {
+      socket = new WebSocket(wsUrl);
+      setLiveConnection("connecting");
+      socket.onopen = () => {
+        if (disposed) return;
+        setLiveConnection("connected");
+        try { socket.send(JSON.stringify({ type: "SUBSCRIBE", client: "siteditto-dashboard" })); } catch {}
+      };
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          applyLiveState(message.state || message.payload || message.data || message);
+        } catch {}
+      };
+      socket.onerror = () => { if (!disposed) setLiveConnection("offline"); };
+      socket.onclose = () => { if (!disposed) setLiveConnection("offline"); };
+    } catch { setLiveConnection("offline"); }
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("message", handleWindowMessage);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) { try { socket.close(); } catch {} }
+    };
+  }, [liveGuard]);
 
 
   /* ======================================================
@@ -404,292 +479,88 @@ export default function App() {
 
   /* ======================================================
      LIVEGUARD
+     Score changes now come from real extension/backend events.
+     There is intentionally no random score mutation here.
   ====================================================== */
-
-  useEffect(() => {
-
-    if (!liveGuard || !result) {
-      return;
-    }
-
-    const timer =
-      setInterval(() => {
-
-        setResult((current) => {
-
-          if (!current) {
-            return current;
-          }
-
-          const change =
-            Math.random() > 0.8
-              ? -1
-              : 0;
-
-          return {
-            ...current,
-
-            score: Math.max(
-              1,
-              current.score + change
-            ),
-          };
-
-        });
-
-      }, 3000);
-
-    return () =>
-      clearInterval(timer);
-
-  }, [liveGuard, result]);
 
 
   /* ======================================================
      QR / SHORTLINK SCAN
   ====================================================== */
 
-  async function decodeQrImage(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+  function analyzeQrLink() {
 
-      reader.onload = () => {
-        const image = new Image();
-
-        image.onload = () => {
-          try {
-            const canvas = document.createElement("canvas");
-            const context = canvas.getContext("2d", {
-              willReadFrequently: true,
-            });
-
-            if (!context) {
-              reject(new Error("Could not process the QR image."));
-              return;
-            }
-
-            const maxSize = 1600;
-            const scale = Math.min(
-              1,
-              maxSize /
-                Math.max(
-                  image.naturalWidth,
-                  image.naturalHeight
-                )
-            );
-
-            canvas.width = Math.max(
-              1,
-              Math.round(image.naturalWidth * scale)
-            );
-            canvas.height = Math.max(
-              1,
-              Math.round(image.naturalHeight * scale)
-            );
-
-            context.drawImage(
-              image,
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-
-            const imageData = context.getImageData(
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-
-            const code = jsQR(
-              imageData.data,
-              imageData.width,
-              imageData.height,
-              {
-                inversionAttempts: "attemptBoth",
-              }
-            );
-
-            if (!code?.data) {
-              reject(
-                new Error(
-                  "No readable QR code was found. Try a clearer QR image."
-                )
-              );
-              return;
-            }
-
-            resolve(code.data.trim());
-          } catch {
-            reject(
-              new Error(
-                "The QR image could not be processed. Please try another image."
-              )
-            );
-          }
-        };
-
-        image.onerror = () => {
-          reject(
-            new Error(
-              "This image could not be opened. Please choose a valid PNG, JPG or WEBP file."
-            )
-          );
-        };
-
-        image.src = reader.result;
-      };
-
-      reader.onerror = () => {
-        reject(
-          new Error(
-            "The QR image could not be read. Please try again."
-          )
-        );
-      };
-
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function classifyQrDestination(input) {
-    const normalized = input.trim().toLowerCase();
-
-    // Synthetic phishing examples use reserved .example domains.
     if (
-      normalized.includes(".example") ||
-      normalized.includes("login-verification") ||
-      normalized.includes("account-security-verify")
+      !qrInput.trim() &&
+      !qrFile
     ) {
-      return {
-        ...qrScenarios.danger,
-        message:
-          "The decoded destination contains high-risk account/login language. This is a synthetic phishing demonstration URL; do not visit or enter credentials.",
-        redirectsList: [
-          normalized.replace(/^https?:\/\//, ""),
-          "credential-check.example",
-          "account-security-verify.example",
-        ],
-      };
-    }
-
-    // Shortened links are shown as caution until backend redirect
-    // resolution is connected.
-    if (
-      normalized.includes("tinyurl") ||
-      normalized.includes("bit.ly") ||
-      normalized.includes("bitly") ||
-      normalized.includes("t.co") ||
-      normalized.includes("is.gd") ||
-      normalized.includes("ow.ly") ||
-      normalized.includes("shorturl")
-    ) {
-      return qrScenarios.caution;
-    }
-
-    // Safe baseline for ordinary HTTPS URLs in Review 1.
-    return {
-      ...qrScenarios.safe,
-      message:
-        "The QR code was decoded successfully. The destination uses HTTPS and no obvious phishing keywords were found in the URL.",
-      redirectsList: [
-        normalized.replace(/^https?:\/\//, ""),
-      ],
-    };
-  }
-
-  async function analyzeQrLink() {
-    if (!qrInput.trim() && !qrFile) {
-      setQrError("Enter a link or choose a QR image first.");
       return;
     }
 
     setQrScanning(true);
     setQrProgress(0);
     setQrResult(null);
-    setQrError("");
 
     let current = 0;
 
-    const progressTimer = setInterval(() => {
-      current = Math.min(current + 10, 90);
-      setQrProgress(current);
-    }, 120);
+    const timer =
+      setInterval(() => {
 
-    try {
-      let destination = qrInput.trim();
+        current += 10;
 
-      // A selected QR image is decoded locally in the browser.
-      if (qrFile) {
-        destination = await decodeQrImage(qrFile);
-        setDecodedQrUrl(destination);
-        setQrInput(destination);
-      } else {
-        setDecodedQrUrl("");
-      }
+        setQrProgress(current);
 
-      if (!/^https?:\/\//i.test(destination)) {
-        destination = `https://${destination}`;
-      }
+        if (current >= 100) {
 
-      let parsedUrl;
+          clearInterval(timer);
 
-      try {
-        parsedUrl = new URL(destination);
-      } catch {
-        throw new Error(
-          "The QR was decoded, but it does not contain a valid website URL."
-        );
-      }
+          setTimeout(() => {
 
-      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-        throw new Error(
-          "SITEDitto currently analyzes HTTP and HTTPS destinations only."
-        );
-      }
+            let selected =
+              qrScenarios.safe;
 
-      // Review 1 frontend analysis. Real redirect resolution will be
-      // connected to the backend in the next phase.
-      const selected = classifyQrDestination(parsedUrl.href);
+            const input =
+              qrInput.toLowerCase();
 
-      await new Promise((resolve) => {
-        setTimeout(resolve, 250);
-      });
+            if (
+              input.includes("login") ||
+              input.includes("verify") ||
+              input.includes("account")
+            ) {
+              selected =
+                qrScenarios.danger;
+            }
 
-      clearInterval(progressTimer);
-      setQrProgress(100);
+            else if (
+              input.includes("tinyurl") ||
+              input.includes("bitly") ||
+              input.includes("bit.ly")
+            ) {
+              selected =
+                qrScenarios.caution;
+            }
 
-      setTimeout(() => {
-        setQrResult({
-          ...selected,
-          original: parsedUrl.href,
-          final:
-            selected === qrScenarios.safe
-              ? parsedUrl.href
-              : selected.final,
-          message:
-            selected === qrScenarios.safe
-              ? "The QR code was decoded successfully. No obvious phishing keywords were found in the destination URL."
-              : selected.message,
-          redirectsList:
-            selected === qrScenarios.safe
-              ? [parsedUrl.host]
-              : selected.redirectsList,
-        });
+            else if (qrFile) {
 
-        setQrScanning(false);
-      }, 300);
-    } catch (error) {
-      clearInterval(progressTimer);
-      setQrProgress(0);
-      setQrScanning(false);
-      setQrError(
-        error?.message || "Unable to analyze this QR/link."
-      );
-    }
+              /*
+               Demo behaviour for uploaded QR.
+               Actual QR decoding will be done
+               by the backend in the next phase.
+              */
+
+              selected =
+                qrScenarios.caution;
+            }
+
+            setQrResult(selected);
+
+            setQrScanning(false);
+
+          }, 500);
+        }
+
+      }, 160);
   }
-
 
 
   /* ======================================================
@@ -990,10 +861,6 @@ export default function App() {
               qrProgress={qrProgress}
 
               qrResult={qrResult}
-
-              qrError={qrError}
-
-              decodedQrUrl={decodedQrUrl}
 
               analyzeQrLink={
                 analyzeQrLink
@@ -1886,8 +1753,6 @@ function QrScannerPage({
   qrScanning,
   qrProgress,
   qrResult,
-  qrError,
-  decodedQrUrl,
   analyzeQrLink,
 }) {
 
@@ -2014,57 +1879,39 @@ function QrScannerPage({
 
 
           <div className="qrExamples">
-            <button
-              onClick={() =>
-                setQrInput("https://www.google.com")
-              }
-            >
-              Google
-            </button>
 
             <button
               onClick={() =>
-                setQrInput("https://github.com")
+                setQrInput(
+                  "https://bit.ly/siteditto-demo"
+                )
               }
             >
-              GitHub
-            </button>
-
-            <button
-              onClick={() =>
-                setQrInput("https://www.wikipedia.org")
-              }
-            >
-              Wikipedia
+              Safe demo
             </button>
 
             <button
               onClick={() =>
                 setQrInput(
-                  "https://github.com-login-verification.example"
+                  "https://tinyurl.com/account-check"
                 )
               }
             >
-              Suspicious Login
+              Suspicious demo
             </button>
 
             <button
               onClick={() =>
                 setQrInput(
-                  "https://account-security-verify.example/login"
+                  "https://qr-example.com/login"
                 )
               }
             >
-              Phishing Demo
+              Phishing demo
             </button>
+
           </div>
 
-
-          <div className="qrDemoNote">
-            Real websites are provided for safe demonstrations.
-            Phishing examples use reserved <b>.example</b> domains
-            and are not real malicious websites.
-          </div>
 
           <button
             className="qrAnalyzeButton"

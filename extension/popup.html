@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -10,7 +12,11 @@
 
   <title>SITEDitto</title>
 
-  <link rel="stylesheet" href="popup.css">
+  <link
+    rel="stylesheet"
+    href="popup.css"
+  >
+
 </head>
 
 <body>
@@ -18,30 +24,39 @@
   <div class="container">
 
     <!-- Header -->
+
     <div class="header">
 
       <div class="logo">
-        🛡️
+        🛡
       </div>
 
       <div>
-        <h1>SITEDitto</h1>
-        <p>Virtual Website Security</p>
+
+        <div class="title">
+          SITEDitto
+        </div>
+
+        <div class="subtitle">
+          LIVE WEBSITE SECURITY
+        </div>
+
       </div>
 
     </div>
 
 
-    <!-- Current Website -->
-    <div class="website-card">
+    <!-- Website -->
 
-      <div class="label">
+    <div class="website-box">
+
+      <div class="small-label">
         CURRENT WEBSITE
       </div>
 
       <div
-        id="websiteUrl"
-        class="website-url"
+        id="website"
+        class="website"
       >
         Detecting...
       </div>
@@ -49,128 +64,127 @@
     </div>
 
 
-    <!-- Loading -->
-    <div
-      id="loading"
-      class="loading"
-    >
+    <!-- Score -->
 
-      <div class="spinner"></div>
+    <div class="score-section">
 
-      <p>Analyzing website...</p>
-
-    </div>
-
-
-    <!-- Result -->
-    <div
-      id="result"
-      class="result hidden"
-    >
-
-      <!-- Score -->
-      <div class="score-section">
-
-        <div
-          id="score"
-          class="score"
-        >
-          94
-        </div>
-
-        <div class="score-label">
-          TRUST SCORE
-        </div>
-
+      <div
+        id="score"
+        class="score"
+      >
+        --
       </div>
 
-
-      <!-- Verdict -->
       <div
         id="verdict"
-        class="verdict safe"
+        class="verdict"
       >
-        ✓ SAFE TO USE
+        ANALYZING
       </div>
-
-
-      <!-- Security checks -->
-      <div class="checks">
-
-        <div class="check">
-          <span class="check-icon">✓</span>
-          <span>HTTPS connection</span>
-        </div>
-
-        <div class="check">
-          <span class="check-icon">✓</span>
-          <span>No suspicious redirect</span>
-        </div>
-
-        <div class="check">
-          <span class="check-icon">✓</span>
-          <span>Low network risk</span>
-        </div>
-
-        <div
-          id="warningCheck"
-          class="check warning"
-        >
-          <span class="check-icon">!</span>
-          <span>Analytics detected</span>
-        </div>
-
-      </div>
-
-
-      <!-- LiveGuard -->
-      <div class="liveguard">
-
-        <div>
-
-          <strong>
-            LIVEGUARD
-          </strong>
-
-          <span>
-            Continuous protection
-          </span>
-
-        </div>
-
-        <div class="live-status">
-          ● ON
-        </div>
-
-      </div>
-
-
-      <!-- Full Analysis -->
-      <button
-        id="fullAnalysis"
-        class="analysis-button"
-      >
-        View Full Analysis
-      </button>
 
     </div>
+
+
+    <!-- Security Signals -->
+
+    <div class="signals">
+
+      <div class="signal">
+        <span>HTTPS</span>
+        <span id="https">—</span>
+      </div>
+
+      <div class="signal">
+        <span>Redirects</span>
+        <span id="redirects">—</span>
+      </div>
+
+      <div class="signal">
+        <span>Credentials</span>
+        <span id="credentials">—</span>
+      </div>
+
+      <div class="signal">
+        <span>Downloads</span>
+        <span id="downloads">—</span>
+      </div>
+
+    </div>
+
+
+    <!-- Live Monitoring -->
+
+    <div class="live">
+
+      <span class="live-dot"></span>
+
+      LIVE MONITORING ACTIVE
+
+    </div>
+
+
+    <!-- Latest Event -->
+
+    <div class="event-box">
+
+      <div class="event-title">
+        LATEST SECURITY EVENT
+      </div>
+
+      <div
+        id="latestEvent"
+        class="event"
+      >
+        Waiting for activity...
+      </div>
+
+    </div>
+
+
+    <!-- Warning -->
+
+    <div
+      id="warning"
+      class="warning hidden"
+    >
+
+      <div class="warning-title">
+        ⚠ SECURITY WARNING
+      </div>
+
+      <div
+        id="warningText"
+        class="warning-text"
+      >
+      </div>
+
+    </div>
+
+
+    <!-- Dashboard Button -->
+
+    <button
+      id="openDashboard"
+      class="dashboard-btn"
+      type="button"
+    >
+      🌐 Open SITEDitto Dashboard
+    </button>
 
 
     <!-- Footer -->
+
     <div class="footer">
-
-      <span>Don't trust the website.</span>
-
-      <strong>
-        Test it first.
-      </strong>
-
+      SITEDitto • Continuous Security Monitoring
     </div>
 
   </div>
 
 
+  <!-- JavaScript -->
+
   <script src="popup.js"></script>
 
 </body>
+
 </html>

@@ -1,21 +1,16 @@
-// ============================================
-// SITEDitto Browser Extension
-// Review 1 Demo Version
-// ============================================
+// ============================================================
+// SITEDitto Popup
+// ============================================================
+
+let currentTabId = null;
 
 
-// --------------------------------------------
-// Get elements
-// --------------------------------------------
+// ============================================================
+// DOM ELEMENTS
+// ============================================================
 
-const websiteUrlElement =
-  document.getElementById("websiteUrl");
-
-const loadingElement =
-  document.getElementById("loading");
-
-const resultElement =
-  document.getElementById("result");
+const websiteElement =
+  document.getElementById("website");
 
 const scoreElement =
   document.getElementById("score");
@@ -23,326 +18,483 @@ const scoreElement =
 const verdictElement =
   document.getElementById("verdict");
 
-const warningCheck =
-  document.getElementById("warningCheck");
+const httpsElement =
+  document.getElementById("https");
 
-const fullAnalysisButton =
-  document.getElementById("fullAnalysis");
+const redirectsElement =
+  document.getElementById("redirects");
+
+const credentialsElement =
+  document.getElementById("credentials");
+
+const downloadsElement =
+  document.getElementById("downloads");
+
+const latestEventElement =
+  document.getElementById("latestEvent");
+
+const warningElement =
+  document.getElementById("warning");
+
+const warningTextElement =
+  document.getElementById("warningText");
+
+const dashboardButton =
+  document.getElementById("openDashboard");
 
 
-// --------------------------------------------
-// Demo website analysis
-// --------------------------------------------
+// ============================================================
+// CHECK POPUP HTML
+// ============================================================
 
-function analyzeWebsite(url) {
+console.log("[SITEDitto] Popup loaded.");
 
-  const lowerUrl = url.toLowerCase();
+console.log("[SITEDitto] Required elements:", {
+  website: !!websiteElement,
+  score: !!scoreElement,
+  verdict: !!verdictElement,
+  https: !!httpsElement,
+  redirects: !!redirectsElement,
+  credentials: !!credentialsElement,
+  downloads: !!downloadsElement,
+  latestEvent: !!latestEventElement,
+  warning: !!warningElement,
+  warningText: !!warningTextElement,
+  dashboardButton: !!dashboardButton
+});
 
 
-  // ------------------------------------------
-  // DANGEROUS
-  // ------------------------------------------
+// ============================================================
+// GET CURRENT TAB
+// ============================================================
 
-  if (
-    lowerUrl.includes("verify-account") ||
-    lowerUrl.includes("secure-account") ||
-    lowerUrl.includes("login-verification") ||
-    lowerUrl.includes("free-prize") ||
-    lowerUrl.includes("password-reset")
-  ) {
+async function getCurrentTab() {
 
-    return {
+  try {
 
-      score: 23,
+    const tabs =
+      await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
 
-      verdict: "🚨 DO NOT USE",
+    if (!tabs || tabs.length === 0) {
+      return null;
+    }
 
-      type: "danger",
+    return tabs[0];
 
-      checks: [
-        "Suspicious redirect detected",
-        "Phishing indicators detected",
-        "Credential form detected",
-        "Unknown external destination"
-      ]
+  } catch (error) {
 
-    };
+    console.error(
+      "[SITEDitto] Failed to get current tab:",
+      error
+    );
 
+    return null;
   }
-
-
-  // ------------------------------------------
-  // CAUTION
-  // ------------------------------------------
-
-  if (
-    lowerUrl.includes("bit.ly") ||
-    lowerUrl.includes("tinyurl") ||
-    lowerUrl.includes("t.co") ||
-    lowerUrl.includes("shorturl") ||
-    lowerUrl.includes("login") ||
-    lowerUrl.includes("account")
-  ) {
-
-    return {
-
-      score: 61,
-
-      verdict: "⚠ USE WITH CAUTION",
-
-      type: "caution",
-
-      checks: [
-        "Shortened or sensitive URL",
-        "Additional redirect possible",
-        "Third-party network activity",
-        "Verify website identity"
-      ]
-
-    };
-
-  }
-
-
-  // ------------------------------------------
-  // SAFE
-  // ------------------------------------------
-
-  return {
-
-    score: 94,
-
-    verdict: "✓ SAFE TO USE",
-
-    type: "safe",
-
-    checks: [
-      "HTTPS connection",
-      "No suspicious redirect",
-      "Low network risk",
-      "Analytics detected"
-    ]
-
-  };
-
 }
 
 
-// --------------------------------------------
-// Update check list
-// --------------------------------------------
+// ============================================================
+// GET STORED STATE
+// ============================================================
 
-function updateChecks(checks) {
+async function getState(tabId) {
 
-  const checksContainer =
-    document.querySelector(".checks");
+  try {
 
+    const result =
+      await chrome.storage.local.get(
+        `tab_${tabId}`
+      );
 
-  checksContainer.innerHTML = "";
+    return result[`tab_${tabId}`] || null;
 
+  } catch (error) {
 
-  checks.forEach((check, index) => {
+    console.error(
+      "[SITEDitto] Failed to get state:",
+      error
+    );
 
-    const div =
-      document.createElement("div");
-
-    div.className = "check";
-
-
-    const icon =
-      document.createElement("span");
-
-    icon.className = "check-icon";
-
-
-    const text =
-      document.createElement("span");
+    return null;
+  }
+}
 
 
-    text.textContent = check;
+// ============================================================
+// UPDATE UI
+// ============================================================
+
+function updateUI(state) {
+
+  if (
+    !websiteElement ||
+    !scoreElement ||
+    !verdictElement
+  ) {
+
+    console.error(
+      "[SITEDitto] Required popup elements are missing."
+    );
+
+    return;
+  }
 
 
-    // First two are treated as positive
-    if (index < 2) {
+  // ----------------------------------------------------------
+  // No state
+  // ----------------------------------------------------------
 
-      icon.textContent = "✓";
+  if (!state) {
+
+    websiteElement.textContent =
+      "No monitoring data";
+
+    scoreElement.textContent =
+      "--";
+
+    verdictElement.textContent =
+      "WAITING";
+
+    if (httpsElement) {
+      httpsElement.textContent = "—";
+    }
+
+    if (redirectsElement) {
+      redirectsElement.textContent = "—";
+    }
+
+    if (credentialsElement) {
+      credentialsElement.textContent = "—";
+    }
+
+    if (downloadsElement) {
+      downloadsElement.textContent = "—";
+    }
+
+    if (latestEventElement) {
+      latestEventElement.textContent =
+        "Waiting for activity...";
+    }
+
+    if (warningElement) {
+      warningElement.classList.add("hidden");
+    }
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // Website
+  // ----------------------------------------------------------
+
+  let hostname =
+    state.url || "Unknown";
+
+  try {
+
+    hostname =
+      new URL(state.url).hostname;
+
+  } catch {
+
+    // Keep original URL
+  }
+
+  websiteElement.textContent =
+    hostname;
+
+
+  // ----------------------------------------------------------
+  // Score
+  // ----------------------------------------------------------
+
+  const score =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Number(state.score ?? 0)
+      )
+    );
+
+  scoreElement.textContent =
+    score;
+
+
+  // ----------------------------------------------------------
+  // Verdict
+  // ----------------------------------------------------------
+
+  let verdict =
+    state.verdict;
+
+  if (!verdict) {
+
+    if (score >= 80) {
+
+      verdict =
+        "SAFE TO USE";
+
+    } else if (score >= 50) {
+
+      verdict =
+        "USE WITH CAUTION";
 
     } else {
 
-      icon.textContent = "!";
-
-      div.classList.add("warning");
-
+      verdict =
+        "DO NOT USE";
     }
+  }
 
-
-    div.appendChild(icon);
-
-    div.appendChild(text);
-
-    checksContainer.appendChild(div);
-
-  });
-
-}
-
-
-// --------------------------------------------
-// Display analysis
-// --------------------------------------------
-
-function displayResult(url) {
-
-  const analysis =
-    analyzeWebsite(url);
-
-
-  // URL
-  websiteUrlElement.textContent = url;
-
-
-  // Score
-  scoreElement.textContent =
-    analysis.score;
-
-
-  // Verdict
   verdictElement.textContent =
-    analysis.verdict;
+    verdict;
 
 
-  // Reset classes
-  verdictElement.className =
-    "verdict " + analysis.type;
+  // ----------------------------------------------------------
+  // Score colors
+  // ----------------------------------------------------------
+
+  if (score >= 80) {
+
+    scoreElement.style.color =
+      "#49e29b";
+
+    verdictElement.style.color =
+      "#49e29b";
+
+  } else if (score >= 50) {
+
+    scoreElement.style.color =
+      "#f4c95d";
+
+    verdictElement.style.color =
+      "#f4c95d";
+
+  } else {
+
+    scoreElement.style.color =
+      "#ff6269";
+
+    verdictElement.style.color =
+      "#ff6269";
+  }
 
 
-  // Checks
-  updateChecks(
-    analysis.checks
-  );
+  // ----------------------------------------------------------
+  // Signals
+  // ----------------------------------------------------------
+
+  const signals =
+    state.signals || {};
 
 
-  // Show result
-  loadingElement.classList.add(
-    "hidden"
-  );
+  if (httpsElement) {
 
-  resultElement.classList.remove(
-    "hidden"
-  );
-
-}
+    httpsElement.textContent =
+      signals.https
+        ? "✓"
+        : "⚠";
+  }
 
 
-// --------------------------------------------
-// Get current browser tab
-// --------------------------------------------
+  if (redirectsElement) {
 
-function getCurrentTab() {
-
-  chrome.tabs.query(
-    {
-      active: true,
-      currentWindow: true
-    },
-
-    function(tabs) {
-
-      if (
-        !tabs ||
-        tabs.length === 0
-      ) {
-
-        websiteUrlElement.textContent =
-          "No active tab";
-
-        loadingElement.classList.add(
-          "hidden"
-        );
-
-        return;
-
-      }
+    redirectsElement.textContent =
+      signals.redirects ?? 0;
+  }
 
 
-      const tab = tabs[0];
+  if (credentialsElement) {
+
+    credentialsElement.textContent =
+      signals.credentialForm
+        ? "⚠"
+        : "✓";
+  }
 
 
-      const url =
-        tab.url;
+  if (downloadsElement) {
+
+    downloadsElement.textContent =
+      signals.download
+        ? "⚠"
+        : "✓";
+  }
 
 
-      // Browser internal pages
-      if (
-        !url ||
-        url.startsWith("chrome://") ||
-        url.startsWith("edge://") ||
-        url.startsWith("about:")
-      ) {
+  // ----------------------------------------------------------
+  // Latest Event
+  // ----------------------------------------------------------
 
-        websiteUrlElement.textContent =
-          "Browser internal page";
+  if (latestEventElement) {
 
-        loadingElement.classList.add(
-          "hidden"
-        );
+    if (
+      Array.isArray(state.events) &&
+      state.events.length > 0
+    ) {
 
-        resultElement.classList.remove(
-          "hidden"
-        );
+      latestEventElement.textContent =
+        state.events[0].message ||
+        "Security activity detected.";
 
-        scoreElement.textContent =
-          "--";
+    } else {
 
-        verdictElement.textContent =
-          "Cannot analyze this page";
-
-        verdictElement.className =
-          "verdict caution";
-
-        return;
-
-      }
+      latestEventElement.textContent =
+        "No security events detected.";
+    }
+  }
 
 
-      // --------------------------------------
-      // Simulate analysis
-      // --------------------------------------
+  // ----------------------------------------------------------
+  // Warning
+  // ----------------------------------------------------------
 
-      setTimeout(
-        function() {
+  if (
+    warningElement &&
+    warningTextElement
+  ) {
 
-          displayResult(url);
+    if (score < 50) {
 
-        },
-        900
+      warningElement.classList.remove(
+        "hidden"
       );
 
+      warningTextElement.textContent =
+        "This website has multiple security risk signals. Avoid entering passwords or sensitive information.";
 
-      // --------------------------------------
-      // Full dashboard button
-      // --------------------------------------
+    } else if (score < 80) {
 
-fullAnalysisButton.onclick =
-  function() {
+      warningElement.classList.remove(
+        "hidden"
+      );
 
-    chrome.tabs.create(
-      {
-        url: "http://localhost:5173/"
-      }
-    );
+      warningTextElement.textContent =
+        "Some security signals require caution. Review the detected activity before continuing.";
 
-  };    
+    } else {
 
+      warningElement.classList.add(
+        "hidden"
+      );
     }
-
-  );
-
+  }
 }
 
 
-// --------------------------------------------
-// Start
-// --------------------------------------------
+// ============================================================
+// LOAD POPUP
+// ============================================================
 
-getCurrentTab();
+async function loadPopup() {
+
+  console.log(
+    "[SITEDitto] Loading popup..."
+  );
+
+
+  const tab =
+    await getCurrentTab();
+
+
+  if (
+    !tab ||
+    typeof tab.id !== "number"
+  ) {
+
+    console.warn(
+      "[SITEDitto] No valid active tab."
+    );
+
+    updateUI(null);
+
+    return;
+  }
+
+
+  currentTabId =
+    tab.id;
+
+
+  console.log(
+    "[SITEDitto] Current tab:",
+    tab.url
+  );
+
+
+  const state =
+    await getState(
+      currentTabId
+    );
+
+
+  updateUI(state);
+}
+
+
+// ============================================================
+// LIVE SCORE UPDATE
+// ============================================================
+
+chrome.runtime.onMessage.addListener(
+  (message) => {
+
+    console.log(
+      "[SITEDitto] Message received:",
+      message
+    );
+
+
+    if (
+      message &&
+      message.type === "SCORE_UPDATED" &&
+      message.state
+    ) {
+
+      updateUI(
+        message.state
+      );
+    }
+  }
+);
+
+
+// ============================================================
+// OPEN DASHBOARD
+// ============================================================
+
+if (dashboardButton) {
+
+  dashboardButton.addEventListener(
+    "click",
+    () => {
+
+      console.log(
+        "[SITEDitto] Opening dashboard..."
+      );
+
+      chrome.tabs.create({
+        url: "http://localhost:5173"
+      });
+
+    }
+  );
+
+} else {
+
+  console.error(
+    "[SITEDitto] Dashboard button not found."
+  );
+}
+
+
+// ============================================================
+// START
+// ============================================================
+
+loadPopup();

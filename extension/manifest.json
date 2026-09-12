@@ -1,16 +1,37 @@
 {
   "manifest_version": 3,
-  "name": "SITEDitto - Virtual Website Security",
-  "version": "1.0.0",
-  "description": "Analyze the current website for security, phishing, privacy and network risks.",
+  "name": "SITEDitto",
+  "version": "2.0.0",
+  "description": "Continuous website security monitoring and dynamic trust scoring.",
+
   "permissions": [
     "tabs",
-    "activeTab"
+    "storage",
+    "webNavigation",
+    "downloads"
   ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "SITEDitto Security"
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
   },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_title": "SITEDitto",
+    "default_popup": "popup.html"
+  },
+
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
